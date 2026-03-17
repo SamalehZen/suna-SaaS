@@ -45,6 +45,14 @@ max_client_conn = 100
 # [db.vault]
 # secret_key = "env(SECRET_VALUE)"
 
+# Note: Webhook configuration is stored in the database table `webhook_config`
+# See: migrations/20251113000000_welcome_email_webhook.sql
+#
+# ⚠️  These settings ONLY apply if you're running LOCAL Supabase (rare)
+# Most people use CLOUD Supabase → configure in Supabase Dashboard instead
+# See: backend/supabase/WEBHOOK_SETUP.md
+[db.settings]
+
 [db.migrations]
 # Specifies an ordered list of schema files that describe your database.
 # Supports glob patterns relative to supabase directory: "./schemas/*.sql"
@@ -106,7 +114,18 @@ enabled = true
 # in emails.
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = []
+# Note: For cloud Supabase, configure these in Dashboard → Authentication → URL Configuration
+additional_redirect_urls = [
+  "kortix://auth/callback",
+  "http://localhost:3000/**",
+  "http://localhost:3000/auth/callback",
+  "https://staging.kortix.com/**",
+  "https://staging.kortix.com/auth/callback",
+  "https://kortix.com/**",
+  "https://kortix.com/auth/callback",
+  "https://www.kortix.com/**",
+  "https://www.kortix.com/auth/callback",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -117,7 +136,7 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
@@ -169,7 +188,7 @@ otp_expiry = 3600
 # host = "smtp.sendgrid.net"
 # port = 587
 # user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
+# pass = "env(EMAIL_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
@@ -297,14 +316,6 @@ backend = "postgres"
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""
-# Configures S3 bucket URL, eg. <bucket_name>.s3-<region>.amazonaws.com
-s3_host = "env(S3_HOST)"
-# Configures S3 bucket region, eg. us-east-1
-s3_region = "env(S3_REGION)"
-# Configures AWS_ACCESS_KEY_ID for S3 bucket
-s3_access_key = "env(S3_ACCESS_KEY)"
-# Configures AWS_SECRET_ACCESS_KEY for S3 bucket
-s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.billing-webhooks]
 verify_jwt = false

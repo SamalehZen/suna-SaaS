@@ -1,3 +1,29 @@
+# ============================================================================
+# KORTIX SUPER WORKER DOCKER COMPOSE - LOCAL DEVELOPMENT
+# ============================================================================
+# This Docker Compose file runs Kortix Super Worker services (Backend, Worker, Frontend, Redis)
+#
+# ⚠️  IMPORTANT LIMITATION - LOCAL SUPABASE:
+# Currently, local Supabase (via `npx supabase start`) is NOT supported with
+# Docker Compose due to network configuration complexity.
+#
+# TODO: Integrate Supabase services directly into this compose file to enable
+#       full Docker-based local development with proper network configuration.
+#
+# CURRENT WORKAROUND:
+# - Use cloud Supabase for Docker Compose setup
+# - OR run everything manually (no Docker) to use local Supabase
+#
+# Quick Start:
+#   docker compose up -d          # Start all services
+#   docker compose down           # Stop all services
+#   docker compose logs -f        # View all logs
+#
+# Access:
+#   - Kortix Super Worker Frontend:     http://localhost:3000
+#   - Kortix Super Worker Backend API:  http://localhost:8000
+# ============================================================================
+
 services:
   redis:
     image: redis:7-alpine
@@ -13,21 +39,6 @@ services:
       timeout: 5s
       retries: 3
 
-  rabbitmq:
-    image: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   backend:
     image: ghcr.io/suna-ai/suna-backend:latest
     platform: linux/amd64
@@ -38,62 +49,40 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/.env:/app/.env:ro
-    env_file:
-      - ./backend/.env
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
+    # DNS configuration to reduce DNS lookup latency for third-party services
+    # Using Google and Cloudflare DNS for reliability
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    dns_search:
+      - .
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      worker:
-        condition: service_started
 
-  worker:
-    image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
-    volumes:
-      - ./backend/.env:/app/.env:ro
-    env_file:
-      - ./backend/.env
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
 
   frontend:
     init: true
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # Use the monorepo root as build context so workspace packages
+      # (e.g. packages/shared) are available during the frontend Docker build.
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
+        NEXT_PUBLIC_URL: ${NEXT_PUBLIC_URL:-http://localhost:3000}
+        NEXT_PUBLIC_ENV_MODE: ${NEXT_PUBLIC_ENV_MODE:-LOCAL}
+        # Use relaxed lockfile mode for local dev; prod uses --frozen-lockfile by default
+        PNPM_LOCKFILE_MODE: --no-frozen-lockfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend/.env.local:/app/.env.local:ro
-    environment:
-      - NODE_ENV=production
-    command: ["npm", "run", "start"]
     depends_on:
       - backend
 
 volumes:
   redis_data:
-  rabbitmq_data:

@@ -19,6 +19,8 @@
   * -------------------------------------------------------
  */
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- revoke execution by default from public
 ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
@@ -177,7 +179,7 @@ CREATE OR REPLACE FUNCTION basejump.generate_token(length int)
     RETURNS text AS
 $$
 select regexp_replace(replace(
-                              replace(replace(replace(encode(gen_random_bytes(length)::bytea, 'base64'), '/', ''), '+',
+                              replace(replace(replace(encode(extensions.gen_random_bytes(length)::bytea, 'base64'), '/', ''), '+',
                                               ''), '\', ''),
                               '=',
                               ''), E'[\\n\\r]+', '', 'g');

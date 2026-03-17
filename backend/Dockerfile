@@ -3,7 +3,21 @@ FROM ghcr.io/astral-sh/uv:python3.11-alpine
 ENV ENV_MODE production
 WORKDIR /app
 
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl git \
+    # Dependencies for Python package compilation
+    freetype-dev \
+    gcc \
+    linux-headers \
+    musl-dev \
+    python3-dev \
+    # Dependencies for WeasyPrint (PDF generation)
+    pango \
+    cairo \
+    gdk-pixbuf \
+    libffi \
+    fontconfig \
+    ttf-dejavu \
+    ttf-liberation
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
@@ -13,32 +27,9 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --quiet
 # Copy application code
 COPY . .
 
-# Calculate optimal worker count based on 16 vCPUs
-# Using (2*CPU)+1 formula for CPU-bound applications
-ENV WORKERS=33
-ENV THREADS=2
-ENV WORKER_CONNECTIONS=2000
-
 ENV PYTHONPATH=/app
 EXPOSE 8000
 
-# Gunicorn configuration
-CMD ["sh", "-c", "uv run gunicorn api:app \
-  --workers $WORKERS \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
-  --timeout 1800 \
-  --graceful-timeout 600 \
-  --keep-alive 1800 \
-  --max-requests 0 \
-  --max-requests-jitter 0 \
-  --forwarded-allow-ips '*' \
-  --worker-connections $WORKER_CONNECTIONS \
-  --worker-tmp-dir /dev/shm \
-  --preload \
-  --log-level info \
-  --access-logfile - \
-  --error-logfile - \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --threads $THREADS"]
+# WORKERS and TIMEOUT are set via env variables at runtime (ECS task definition)
+# Defaults: WORKERS=4 (2 per vCPU), TIMEOUT=75 (worker heartbeat - async workers stay alive during active streams)
+CMD ["sh", "-c", "uv run gunicorn api:app -w ${WORKERS:-4} -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout ${TIMEOUT:-75} --graceful-timeout 30 --keep-alive 65"]

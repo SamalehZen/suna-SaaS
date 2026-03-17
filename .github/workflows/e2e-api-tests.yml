@@ -1,0 +1,199 @@
+name: E2E API Tests
+
+on:
+  push:
+    branches:
+      - main        # DEV environment
+      - staging     # STAGING environment
+      - PRODUCTION  # PRODUCTION environment
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+        default: 'dev'
+      test_filter:
+        description: 'pytest filter expression (optional)'
+        required: false
+        type: string
+  workflow_run:
+    workflows: ["Build and Deploy"]
+    types:
+      - completed
+    branches:
+      - main
+      - staging
+      - PRODUCTION
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    # Only run if:
+    # - workflow_run: deployment completed successfully
+    # - push to main/staging/PRODUCTION: run directly
+    # - workflow_dispatch: manual trigger
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/PRODUCTION')) ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          # Manual trigger with environment selection
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "api_url=https://api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          elif [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "api_url=https://staging-api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          elif [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "api_url=https://dev-api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Determine environment from branch
+          BRANCH_REF="${{ github.ref }}"
+          WORKFLOW_RUN_BRANCH="${{ github.event.workflow_run.head_branch }}"
+
+          # Use workflow_run branch if available, otherwise use ref
+          if [ -n "$WORKFLOW_RUN_BRANCH" ]; then
+            BRANCH="$WORKFLOW_RUN_BRANCH"
+          else
+            BRANCH="${BRANCH_REF#refs/heads/}"
+          fi
+
+          echo "Detected branch: $BRANCH"
+
+          # PRODUCTION branch → production environment
+          if [ "$BRANCH" = "PRODUCTION" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "api_url=https://api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # staging branch → staging environment
+          if [ "$BRANCH" = "staging" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "api_url=https://staging-api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # main branch → dev environment
+          if [ "$BRANCH" = "main" ]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "api_url=https://dev-api.kortix.com/v1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Default to dev
+          echo "environment=dev" >> $GITHUB_OUTPUT
+          echo "api_url=https://dev-api.kortix.com/v1" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install E2E test dependencies
+        working-directory: backend
+        run: |
+          pip install -r tests/requirements-e2e.txt
+
+      - name: Wait for deployment
+        run: |
+          ENVIRONMENT="${{ steps.env.outputs.environment }}"
+
+          case "$ENVIRONMENT" in
+            production)
+              echo "⏳ Waiting 5 minutes for production deployment..."
+              sleep 300
+              ;;
+            staging)
+              echo "⏳ Waiting 3 minutes for staging deployment..."
+              sleep 180
+              ;;
+            *)
+              echo "⏳ Waiting 2 minutes for dev deployment..."
+              sleep 120
+              ;;
+          esac
+          echo "✅ Wait complete"
+
+      - name: Health check
+        env:
+          API_URL: ${{ steps.env.outputs.api_url }}
+        run: |
+          echo "🔍 Checking API health at $API_URL/health..."
+
+          # Retry up to 5 times with 30s between attempts
+          for i in 1 2 3 4 5; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health" --max-time 30 || echo "000")
+
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ API is healthy (attempt $i)"
+              exit 0
+            fi
+
+            echo "⚠️ Health check failed (HTTP $HTTP_STATUS), attempt $i/5"
+
+            if [ $i -lt 5 ]; then
+              echo "   Waiting 30s before retry..."
+              sleep 30
+            fi
+          done
+
+          echo "❌ API health check failed after 5 attempts"
+          exit 1
+
+      - name: Run E2E tests
+        working-directory: backend
+        env:
+          TEST_API_URL: ${{ steps.env.outputs.api_url }}
+          # Environment-specific Supabase credentials
+          SUPABASE_URL: ${{ steps.env.outputs.environment == 'production' && secrets.PRODUCTION_SUPABASE_URL || (steps.env.outputs.environment == 'staging' && secrets.STAGING_SUPABASE_URL || secrets.DEV_SUPABASE_URL) }}
+          SUPABASE_ANON_KEY: ${{ steps.env.outputs.environment == 'production' && secrets.PRODUCTION_SUPABASE_ANON_KEY || (steps.env.outputs.environment == 'staging' && secrets.STAGING_SUPABASE_ANON_KEY || secrets.DEV_SUPABASE_ANON_KEY) }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.env.outputs.environment == 'production' && secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY || (steps.env.outputs.environment == 'staging' && secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY || secrets.DEV_SUPABASE_SERVICE_ROLE_KEY) }}
+          SUPABASE_JWT_SECRET: ${{ steps.env.outputs.environment == 'production' && secrets.PRODUCTION_SUPABASE_JWT_SECRET || (steps.env.outputs.environment == 'staging' && secrets.STAGING_SUPABASE_JWT_SECRET || secrets.DEV_SUPABASE_JWT_SECRET) }}
+          # Environment-specific admin key
+          KORTIX_ADMIN_API_KEY: ${{ steps.env.outputs.environment == 'production' && secrets.PRODUCTION_KORTIX_ADMIN_API_KEY || (steps.env.outputs.environment == 'staging' && secrets.STAGING_KORTIX_ADMIN_API_KEY || secrets.DEV_KORTIX_ADMIN_API_KEY) }}
+        run: |
+          TEST_FILTER="${{ github.event.inputs.test_filter || '' }}"
+
+          echo "🧪 Running E2E tests"
+          echo "📍 Environment: ${{ steps.env.outputs.environment }}"
+          echo "📍 API URL: $TEST_API_URL"
+          if [ -n "$TEST_FILTER" ]; then
+            echo "🔍 Test filter: $TEST_FILTER"
+          fi
+          echo ""
+
+          # Build pytest command
+          if [ -n "$TEST_FILTER" ]; then
+            pytest tests/api/ -v --tb=short -k "$TEST_FILTER" --timeout=120
+          else
+            pytest tests/api/ -v --tb=short --timeout=120
+          fi
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ steps.env.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL**: ${{ steps.env.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

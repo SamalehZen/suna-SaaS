@@ -1,0 +1,164 @@
+{
+  "expo": {
+    "name": "Kortix",
+    "slug": "kortix",
+    "version": "1.1.2",
+    "orientation": "portrait",
+    "icon": "./assets/images/AppIcon-Light.png",
+    "scheme": "kortix",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kortix.app",
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:kortix.com",
+        "applinks:www.kortix.com",
+        "applinks:staging.kortix.com"
+      ],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kortix needs camera access to let you capture photos and attach them to your saved conversations with the AI Worker. For example, you can photograph a document, whiteboard, or product for analysis and receive insights that are stored in your conversation history.",
+        "NSPhotoLibraryUsageDescription": "Kortix needs access to your photo library so you can select and share images in your saved conversations with the AI Worker. For example, you can attach screenshots, documents, or images for review—all stored in your personalized conversation history.",
+        "NSMicrophoneUsageDescription": "Kortix needs microphone access to enable voice input for your conversations. For example, you can speak your messages instead of typing, and the app will transcribe your speech to text for your AI Worker conversations.",
+        "NSUserTrackingUsageDescription": "Kortix uses analytics to improve your experience and understand how features are used. For example, we track which AI features are most helpful so we can make the app better for everyone."
+      }
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#F0F0E9"
+      },
+      "package": "com.kortix.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "kortix.com",
+              "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
+              "host": "www.kortix.com",
+              "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
+              "host": "staging.kortix.com",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "kortix.com",
+              "pathPrefix": "/share"
+            },
+            {
+              "scheme": "https",
+              "host": "www.kortix.com",
+              "pathPrefix": "/share"
+            },
+            {
+              "scheme": "https",
+              "host": "staging.kortix.com",
+              "pathPrefix": "/share"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "backgroundColor": "#ffffff",
+          "resizeMode": "contain",
+          "imageWidth": 80
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Kortix needs camera access to let you capture photos and attach them to your saved conversations with the AI Worker. For example, you can photograph a document, whiteboard, or product for analysis and receive insights that are stored in your conversation history.",
+          "photosPermission": "Kortix needs access to your photo library so you can select and share images in your saved conversations with the AI Worker. For example, you can attach screenshots, documents, or images for review—all stored in your personalized conversation history.",
+          "microphonePermission": "Kortix needs microphone access to record videos with audio. For example, you can record a video to share with the AI Worker for analysis and save it to your conversation history."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Kortix needs microphone access to enable voice input for your conversations. For example, you can speak your messages instead of typing, and the app will transcribe your speech to text for your AI Worker conversations."
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Kortix uses analytics to improve your experience and understand how features are used. For example, we track which AI features are most helpful so we can make the app better for everyone."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9fca3cff-a291-41c9-88b9-feb8053b990f"
+      }
+    },
+    "owner": "kortix",
+    "runtimeVersion": "1.1.2",
+    "updates": {
+      "url": "https://u.expo.dev/9fca3cff-a291-41c9-88b9-feb8053b990f",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
+  }
+}

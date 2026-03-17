@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/suna-ai/suna-backend:latest
+    image: ghcr.io/kortix-ai/suna/suna-backend:latest
     platform: linux/amd64
     build:
       context: .
@@ -17,72 +17,72 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     networks:
       - app-network
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - LOG_LEVEL=INFO
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
+      - LOG_LEVEL=DEBUG
+      - WORKERS=${WORKERS:-16}
+    # DNS configuration to reduce DNS lookup latency for third-party services
+    # Using Google and Cloudflare DNS for reliability
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    dns_search:
+      - .
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  worker:
-    image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
-    env_file:
-      - .env
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./worker-logs:/app/logs
-    restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - app-network
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - LOG_LEVEL=INFO
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "uv", "run", "worker_health.py"]
-      timeout: 20s
-      interval: 30s
-      start_period: 40s
+  # Worker service removed - agent runs now execute directly in API process
+  # Memory/categorization tasks also run directly as async background tasks
+  # worker:
+  #   image: ghcr.io/kortix-ai/suna/suna-backend:latest
+  #   platform: linux/amd64
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   command: uv run python run_worker.py --concurrency 48
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - .:/app
+  #     - /app/.venv
+  #     - ./worker-logs:/app/logs
+  #   restart: unless-stopped
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - app-network
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - REDIS_PASSWORD=
+  #     - LOG_LEVEL=INFO
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   healthcheck:
+  #     test: ["CMD", "uv", "run", "python", "core/utils/scripts/worker_health.py"]
+  #     timeout: 30s
+  #     interval: 30s
+  #     retries: 3
+  #     start_period: 60s
 
   redis:
     image: redis:8-alpine
-    # ports:
-    #   - "127.0.0.1:6379:6379"
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
       - ./services/docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
@@ -102,31 +102,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  rabbitmq:
-    image: rabbitmq
-    # ports:
-    #   - "127.0.0.1:5672:5672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    restart: unless-stopped
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 networks:
   app-network:
     driver: bridge
 
 volumes:
   redis_data:
-  rabbitmq_data:

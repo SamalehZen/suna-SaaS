@@ -43,7 +43,7 @@ ALTER TABLE workflows
 ADD COLUMN mcp_credential_mappings JSONB DEFAULT '{}';
 
 COMMENT ON COLUMN workflows.mcp_credential_mappings IS 
-'JSON mapping of MCP qualified names to credential profile IDs. Example: {"@smithery-ai/slack": "profile_id_123", "github": "profile_id_456"}';
+'JSON mapping of MCP qualified names to credential profile IDs. Example: {"github": "profile_id_123", "slack": "profile_id_456"}';
 
 -- Migrate existing credentials if the table exists
 DO $$

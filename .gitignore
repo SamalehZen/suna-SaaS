@@ -8,6 +8,11 @@ __pycache__/
 # C extensions
 *.so
 
+# claude
+CLAUDE.md
+.claude
+thread_search_test/
+
 # Distribution / packaging
 .Python
 build/
@@ -32,6 +37,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+
+eas.json
 
 # Installer logs
 pip-log.txt
@@ -84,7 +91,8 @@ profile_default/
 ipython_config.py
 
 test/
-
+plan_features/
+tasks/
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
@@ -190,9 +198,9 @@ supabase/.temp/storage-version
 **/__pycache__/
 
 .env.scripts
+.env.docker
 
 redis_data
-rabbitmq_data
 
 .setup_progress
 
@@ -200,3 +208,41 @@ rabbitmq_data
 
 backend/.test_token_compression.py
 backend/test_token_compression_data.py
+
+# Debug streams output
+backend/debug_streams/
+backend/core/agentpress/debug_streams/
+
+dump.rdb
+
+# CodeWebChat state and logs (auto-added)
+.cwc/
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+**/node_modules/**
+.pnpm-store/**
+# Ensure .bin directories in node_modules are ignored
+**/node_modules/.bin/**
+**/.bin/**
+# mobile specific
+apps/mobile/node_modules/
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/expo-env.d.ts
+apps/mobile/.metro-health-check*
+apps/mobile/npm-debug.*apps/mobile/npm-debug.*
+apps/mobile/yarn-debug.*
+apps/mobile/yarn-error.*
+apps/mobile/*.tsbuildinfo
+apps/mobile/.DS_Store
+apps/mobile/*.pem
+apps/mobile/.env
+apps/mobile/.env*.local
+apps/mobile/app-example
+# Docker-specific env files
+*.env.docker
+
+dump.rdb
